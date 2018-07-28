@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+' a new orm'
+
 __author__ = 'tomtiddler'
 
 import asyncio, logging
@@ -12,11 +14,10 @@ def log(sql, arsg=()):
     logging.info('SQL: %s' % sql)
 
 
-@asyncio.coroutine
-def create_pool(loop, **kw):  # 创建全局连接池，用于复用数据库连接
+async def create_pool(loop, **kw):  # 创建全局连接池，用于复用数据库连接 # 没有定义关函数，猜测为长期打开状态
     logging.info('create database connection pool...')
     global __pool
-    __pool = yield from aiomysql.create_pool(
+    __pool = await aiomysql.create_pool(
         host=kw.get('host', 'localhost'),
         port=kw.get('port', 3306),
         user=kw['user'],
@@ -30,32 +31,38 @@ def create_pool(loop, **kw):  # 创建全局连接池，用于复用数据库连
     )
 
 
-@asyncio.coroutine
-def select(sql, args, size=None):  # 用于执行SELECT语句，需传入SQL语句和SQL参数
+# 此函数与教程部分冲突
+async def select(sql, args, size=None):  # 用于执行SELECT语句，需传入SQL语句和SQL参数
     log(sql, args)
-    global __pool
-    with (yield from __pool) as conn:
-        cur = yield from conn.cursor(aiomysql.DictCursor)
-        # 替换‘？’为‘%s'，前者为sql占位符，后者为mysql。始终使用带参数的sql语句，防止sql注入
-        yield from cur.execute(sql.replace('?', '%s'), args or ())
-        if size:
-            rs = yield from cur.fetchmany(size)  # size的用法？？获取最多指定数量的记录？
-        else:
-            rs = yield from cur.fetchall()  # 获取所有记录？
-        yield from cur.close()
+    global __pool #
+    async with __pool.acquire() as conn: #此处教程为get函数，（官网调用后关闭了，当然此处不应关闭，但是否应该有清理缓存一类的操作
+        async with conn.cursor(aiomysql.DictCursor) as cur:
+            # 替换‘？’为‘%s'，前者为sql占位符，后者为mysql。始终使用带参数的sql语句，防止sql注入
+            await cur.execute(sql.replace('?', '%s'), args or ())
+            if size:
+                rs = await cur.fetchmany(size)  # size的用法？？获取最多指定数量的记录？
+            else:
+                rs = await cur.fetchall()  # 获取所有记录？
         logging.info('rows returned: %s' % len(rs))
         return rs
 
 
-@asyncio.coroutine
-def execute(sql, args):  # INSERT、UPDATE、DELETE语句的通用函数
+# 此函数与教程部分冲突，查看文档所得
+async def execute(sql, args, autocommit=True):  # INSERT、UPDATE、DELETE语句的通用函数
     log(sql)
-    with (yield from __pool) as conn: # async with __pool.get() as conn: # 暂未理解此种替换
+    async with __pool.acquire() as conn: # async with __pool.get() as conn: # 暂未理解此种替换
+        if not autocommit:
+            await conn.begin()
         try:
-            cur = yield from conn.cursor() # async with conn.cursor(aiomysql.DictCursor) as cur
-            yield from cur.execute(sql.replace('?', '%s'), args)
-            affected = cur.rowcount  # 返回结果数？
+
+            async with conn.cursor() as cur: # async with conn.cursor(aiomysql.DictCursor) as cur
+                await cur.execute(sql.replace('?', '%s'), args)
+                affected = cur.rowcount  # 返回结果数？
+            if not autocommit:
+                await conn.commit()
         except BaseException as e:
+            if not autocommit:
+                await conn.rollback()
             raise
         return affected
 
@@ -189,10 +196,9 @@ class Model(dict, metaclass=ModelMetaclass):
 
     # 这个类还没搞懂
     @classmethod
-    @asyncio.coroutine
-    def findAll(cls, where=None, args=None, **kw): # 根据where条件查找
+    async def findAll(cls, where=None, args=None, **kw): # 根据where条件查找
         ' find objects by where clause.'
-        sql = [cls.__select__]
+        sql = [cls.__select__] # 定义为列表，手动加粗
         if where:
             sql.append('where')
             sql.append(where)
@@ -213,52 +219,47 @@ class Model(dict, metaclass=ModelMetaclass):
                     args.extend(limit)
                 else:
                     raise ValueError('Invalid limit value: %s' % str(limit))
-            rs = yield from select(' '.join(sql), args)
+            rs = await select(' '.join(sql), args) # 以空格为间隔符合并
             return [cls(**r) for r in rs]
 
 
     @classmethod
-    @asyncio.coroutine
-    def findNumber(cls, selectField, where=None, args=None): # where查找，返回的是整数
+    async def findNumber(cls, selectField, where=None, args=None): # where查找，返回的是整数
         ' find number by select and where '
         sql = ['select %s _num_ from `%s`' % (selectField, cls.__table__)]
         if where:
             sql.append('where')
             sql.append(where)
-        rs = yield from select(' '.join(sql), args, 1) # 此句的join用处
+        rs = await select(' '.join(sql), args, 1) # 此句的join用处
         if len(rs) == 0:
             return None
         return rs[0]['_num_'] # 此参数 _num_ 的出处暂未明白
 
     # 主键查找
     @classmethod
-    @asyncio.coroutine
-    def find(cls, pk):
+    async def find(cls, pk):
         ' find object by primary key'
-        rs = yield from select('%s where `%s`=?' % (cls.__select__, cls.__primary_key__), [pk], 1)
+        rs = await select('%s where `%s`=?' % (cls.__select__, cls.__primary_key__), [pk], 1)
         if len(rs) == 0:
             return None
         return cls(**rs[0])
 
-    @asyncio.coroutine
-    def save(self):
+    async def save(self):
         args = list(map(self.getValueOrDefault, self.__fields__))
         args.append(self.getValueOrDefault(self.__primary_key__))
-        rows = yield from execute(self.__insert__, args)
+        rows = await execute(self.__insert__, args)
         if rows != 1:
             logging.warning('failed to insert record: affected rows: %s' % rows)
 
-    @asyncio.coroutine
-    def update(self):
+    async def update(self):
         args = list(map(self.getValue, self.__fields__))
         args.append(self.getValue(self.__primary_key__))
-        rows = yield from execute(self.__update__, args)
+        rows = await execute(self.__update__, args)
         if rows !=1:
             logging.warning('failed to update by primary key: affected rows: %s' % rows)
 
-    @asyncio.coroutine
-    def remove(self):
+    async def remove(self):
         args = [self.getValue(self.__primary_key__)]
-        rows = yield from execute(self.__delete__, args)
+        rows = await execute(self.__delete__, args)
         if rows !=1:
-            logging.warn('failed to remove by primary key: affected rows: %s' % rows)
+            logging.warning('failed to remove by primary key: affected rows: %s' % rows)
