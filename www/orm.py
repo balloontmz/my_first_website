@@ -34,9 +34,9 @@ async def create_pool(loop, **kw):  # 创建全局连接池，用于复用数据
 # 此函数与教程部分冲突
 async def select(sql, args, size=None):  # 用于执行SELECT语句，需传入SQL语句和SQL参数
     log(sql, args)
-    global __pool #
-    async with __pool.acquire() as conn: #此处教程为get函数，（官网调用后关闭了，当然此处不应关闭，但是否应该有清理缓存一类的操作
-        async with conn.cursor(aiomysql.DictCursor) as cur:
+    global __pool  #
+    async with __pool.acquire() as conn:  # 此处教程为get函数，（官网调用后关闭了，当然此处不应关闭，但是否应该有清理缓存一类的操作
+        async with conn.cursor(aiomysql.DictCursor) as cur: # cursor的参数
             # 替换‘？’为‘%s'，前者为sql占位符，后者为mysql。始终使用带参数的sql语句，防止sql注入
             await cur.execute(sql.replace('?', '%s'), args or ())
             if size:
@@ -50,12 +50,11 @@ async def select(sql, args, size=None):  # 用于执行SELECT语句，需传入S
 # 此函数与教程部分冲突，查看文档所得
 async def execute(sql, args, autocommit=True):  # INSERT、UPDATE、DELETE语句的通用函数
     log(sql)
-    async with __pool.acquire() as conn: # async with __pool.get() as conn: # 暂未理解此种替换
+    async with __pool.acquire() as conn:  # async with __pool.get() as conn: # 暂未理解此种替换
         if not autocommit:
             await conn.begin()
         try:
-
-            async with conn.cursor() as cur: # async with conn.cursor(aiomysql.DictCursor) as cur
+            async with conn.cursor(aiomysql.DictCursor) as cur:  # async with conn.cursor(aiomysql.DictCursor) as cur
                 await cur.execute(sql.replace('?', '%s'), args)
                 affected = cur.rowcount  # 返回结果数？
             if not autocommit:
@@ -157,9 +156,9 @@ class ModelMetaclass(type):
         # 以下代码定义的ORM显示，数据库操作过程中，主键只能创建时和删除时修改，数据修改时无法修改主键
         attrs['__select__'] = 'select `%s`, %s from `%s`' % (primarykey, ', '.join(escaped_fields), tableName)
         attrs['__insert__'] = 'insert into `%s` (%s, `%s`) values (%s)' % (
-        tableName, ', '.join(escaped_fields), primarykey, create_args_string(len(escaped_fields) + 1))
+            tableName, ', '.join(escaped_fields), primarykey, create_args_string(len(escaped_fields) + 1))
         attrs['__update__'] = 'update `%s` set %s where `%s`=?' % (
-        tableName, ', '.join(map(lambda f: '`%s`=?' % (mappings.get(f).name or f))), primarykey)
+            tableName, ', '.join(map(lambda f: '`%s`=?' % (mappings.get(f).name or f))), primarykey)
         attrs['__delete__'] = 'delete from `%s` where `%s`=?' % (tableName, primarykey)
         return type.__new__(cls, name, bases, attrs)
 
@@ -196,9 +195,9 @@ class Model(dict, metaclass=ModelMetaclass):
 
     # 这个类还没搞懂
     @classmethod
-    async def findAll(cls, where=None, args=None, **kw): # 根据where条件查找
+    async def findAll(cls, where=None, args=None, **kw):  # 根据where条件查找
         ' find objects by where clause.'
-        sql = [cls.__select__] # 定义为列表，手动加粗
+        sql = [cls.__select__]  # 定义为列表，手动加粗
         if where:
             sql.append('where')
             sql.append(where)
@@ -219,21 +218,20 @@ class Model(dict, metaclass=ModelMetaclass):
                     args.extend(limit)
                 else:
                     raise ValueError('Invalid limit value: %s' % str(limit))
-            rs = await select(' '.join(sql), args) # 以空格为间隔符合并
+            rs = await select(' '.join(sql), args)  # 以空格为间隔符合并
             return [cls(**r) for r in rs]
 
-
     @classmethod
-    async def findNumber(cls, selectField, where=None, args=None): # where查找，返回的是整数
+    async def findNumber(cls, selectField, where=None, args=None):  # where查找，返回的是整数
         ' find number by select and where '
         sql = ['select %s _num_ from `%s`' % (selectField, cls.__table__)]
         if where:
             sql.append('where')
             sql.append(where)
-        rs = await select(' '.join(sql), args, 1) # 此句的join用处
+        rs = await select(' '.join(sql), args, 1)  # 此句的join用处
         if len(rs) == 0:
             return None
-        return rs[0]['_num_'] # 此参数 _num_ 的出处暂未明白
+        return rs[0]['_num_']  # 此参数 _num_ 的出处暂未明白
 
     # 主键查找
     @classmethod
@@ -255,11 +253,11 @@ class Model(dict, metaclass=ModelMetaclass):
         args = list(map(self.getValue, self.__fields__))
         args.append(self.getValue(self.__primary_key__))
         rows = await execute(self.__update__, args)
-        if rows !=1:
+        if rows != 1:
             logging.warning('failed to update by primary key: affected rows: %s' % rows)
 
     async def remove(self):
         args = [self.getValue(self.__primary_key__)]
         rows = await execute(self.__delete__, args)
-        if rows !=1:
+        if rows != 1:
             logging.warning('failed to remove by primary key: affected rows: %s' % rows)
