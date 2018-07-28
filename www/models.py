@@ -69,4 +69,6 @@ if __name__ == '__main__':
     loop.close()
     if loop.is_closed():
         sys.exit(0)
+# 脚本运行命令为终端下输入：
+# sudo mysql -u root -p < schema.sql
 '''

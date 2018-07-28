@@ -36,7 +36,7 @@ async def select(sql, args, size=None):  # 用于执行SELECT语句，需传入S
     log(sql, args)
     global __pool  #
     async with __pool.acquire() as conn:  # 此处教程为get函数，（官网调用后关闭了，当然此处不应关闭，但是否应该有清理缓存一类的操作
-        async with conn.cursor(aiomysql.DictCursor) as cur: # cursor的参数
+        async with conn.cursor(aiomysql.DictCursor) as cur: # cursor的参数,查看文档表示为将结果作为字典返回
             # 替换‘？’为‘%s'，前者为sql占位符，后者为mysql。始终使用带参数的sql语句，防止sql注入
             await cur.execute(sql.replace('?', '%s'), args or ())
             if size:
@@ -56,7 +56,7 @@ async def execute(sql, args, autocommit=True):  # INSERT、UPDATE、DELETE语句
         try:
             async with conn.cursor(aiomysql.DictCursor) as cur:  # async with conn.cursor(aiomysql.DictCursor) as cur
                 await cur.execute(sql.replace('?', '%s'), args)
-                affected = cur.rowcount  # 返回结果数？
+                affected = cur.rowcount  # 返回结果数？ # Returns the number of rows that has been produced of affected.
             if not autocommit:
                 await conn.commit()
         except BaseException as e:
@@ -147,8 +147,8 @@ class ModelMetaclass(type):
             raise RuntimeError('Primary key not found')
         for k in mappings.keys():
             attrs.pop(k)  # 删除类属性，防止实例属性覆盖类属性
-        escaped_fields = list(map(lambda f: '`%s`' % f, fields))
-        attrs['__mapping__'] = mappings  # 保存属性和列的映射关系
+        escaped_fields = list(map(lambda f: '`%s`' % f, fields)) # 此处应该注意
+        attrs['__mappings__'] = mappings  # 保存属性和列的映射关系
         attrs['__table__'] = tableName
         attrs['__primary_key__'] = primarykey  # 主键属性名
         attrs['__fields__'] = fields  # 除主键外的属性名
@@ -158,7 +158,7 @@ class ModelMetaclass(type):
         attrs['__insert__'] = 'insert into `%s` (%s, `%s`) values (%s)' % (
             tableName, ', '.join(escaped_fields), primarykey, create_args_string(len(escaped_fields) + 1))
         attrs['__update__'] = 'update `%s` set %s where `%s`=?' % (
-            tableName, ', '.join(map(lambda f: '`%s`=?' % (mappings.get(f).name or f))), primarykey)
+            tableName, ', '.join(map(lambda f: '`%s`=?' % (mappings.get(f).name or f), fields)), primarykey)
         attrs['__delete__'] = 'delete from `%s` where `%s`=?' % (tableName, primarykey)
         return type.__new__(cls, name, bases, attrs)
 
