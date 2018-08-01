@@ -152,7 +152,7 @@ class RequestHandler(object):
                         copy[name] = kw[name]
                 kw = copy
             # check named arg:
-            for k, v in kw:
+            for k, v in request.match_info.items():  # 此处曾出错
                 if k in kw:
                     logging.warning('Duplicate arg name in named arg and kw args: %s' % k)
                 kw[k] = v
