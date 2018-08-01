@@ -51,7 +51,7 @@ class Comment(Model):
     created_at = FloatField(default=time.time)
 
 
-'''
+"""
 # 通过插入记录测试orm
 from www import orm
 import asyncio
@@ -59,8 +59,8 @@ import sys
 
 async def test(loop):
     await orm.create_pool(loop = loop, user='www-data', password='www-data', db='website' )
-    u=User(name='tomtiddler',email='example@example.com',passwd='123456',image='about:blank')
-    await u.save()
+    u=User(name='111',email='e2ample@example.com',passwd='1234567',image='about:blank')
+    print(await User.findAll())
 
 if __name__ == '__main__':
 
@@ -71,4 +71,4 @@ if __name__ == '__main__':
         sys.exit(0)
 # 脚本运行命令为终端下输入：
 # sudo mysql -u root -p < schema.sql
-'''
+"""

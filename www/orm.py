@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-' a new orm'
+' a new complete orm'
 
 __author__ = 'tomtiddler'
 
@@ -87,7 +87,7 @@ class Field(object):
         return '<%s, %s:%s>' % (self.__class__.__name__, self.column_type, self.name)
 
 
-#
+# Field的一些子类
 class StringField(Field):
 
     def __init__(self, name=None, primary_key=False, default=None, ddl='varchar(100)'):
@@ -201,25 +201,25 @@ class Model(dict, metaclass=ModelMetaclass):
         if where:
             sql.append('where')
             sql.append(where)
-            if args is None:
-                args = []
-            orderBy = kw.get('orderBy', None)
-            if orderBy:
-                sql.append('order by')
-                sql.append(orderBy)
-            limit = kw.get('limit', None)
-            if limit is not None:
-                sql.append('limit')
-                if isinstance(limit, int):
-                    sql.append('?')
-                    args.append(limit)
-                elif isinstance(limit, tuple) and len(limit) == 2:
-                    sql.append('?, ?')
-                    args.extend(limit)
-                else:
-                    raise ValueError('Invalid limit value: %s' % str(limit))
-            rs = await select(' '.join(sql), args)  # 以空格为间隔符合并
-            return [cls(**r) for r in rs]
+        if args is None:
+            args = []
+        orderBy = kw.get('orderBy', None)
+        if orderBy:
+            sql.append('order by')
+            sql.append(orderBy)
+        limit = kw.get('limit', None)
+        if limit is not None:
+            sql.append('limit')
+            if isinstance(limit, int):
+                sql.append('?')
+                args.append(limit)
+            elif isinstance(limit, tuple) and len(limit) == 2:
+                sql.append('?, ?')
+                args.extend(limit)
+            else:
+                raise ValueError('Invalid limit value: %s' % str(limit))
+        rs = await select(' '.join(sql), args)  # 以空格为间隔符合并
+        return [cls(**r) for r in rs]
 
     @classmethod
     async def findNumber(cls, selectField, where=None, args=None):  # where查找，返回的是整数
