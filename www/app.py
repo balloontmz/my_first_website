@@ -9,7 +9,9 @@
 
 __author__ = 'tomtiddler'
 
-import logging;logging.basicConfig(level=logging.INFO)
+import logging;
+
+logging.basicConfig(level=logging.INFO)
 
 import asyncio, os, json, time
 from datetime import datetime
@@ -20,6 +22,7 @@ from jinja2 import Environment, FileSystemLoader
 from www import orm
 from www.coroweb import add_routes, add_static
 from www.config import configs
+from www.handlers import cookie2user, COOKIE_NAME
 
 
 def init_jinja2(app, **kw):  # options：设置
@@ -53,6 +56,19 @@ async def logger_factory(app, handler):
         return (await handler(request))
 
     return logger
+
+
+async def auth_factory(app, handler):
+    async def auth(request):
+        logging.info('check user: %s %s' % (request.method, request.path))
+        request.__user__ = None
+        cookie_str = request.cookies.get(COOKIE_NAME)
+        if cookie_str:
+            user = await cookie2user(cookie_str)
+            request.__user__ = user
+        return await handler(request)
+
+    return auth
 
 
 # 此函数用于何处？ 应该是解析关于 request的前置处理函数
@@ -130,7 +146,7 @@ def datetime_filter(t):
 
 async def init(loop):
     await orm.create_pool(loop=loop, **configs.db)
-    app = web.Application(loop=loop, middlewares=[logger_factory, response_factory])  # middlerwares:中间件，factory：工厂函数
+    app = web.Application(loop=loop, middlewares=[logger_factory,auth_factory, response_factory])  # middlerwares:中间件，factory：工厂函数
     init_jinja2(app, filters=dict(datetime=datetime_filter))  # 模板的传入参数
     add_routes(app, 'handlers')
     add_static(app)  # 和init_jinja2 两个函数都是需要访问文件夹的。注意路径
