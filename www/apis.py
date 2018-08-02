@@ -11,6 +11,32 @@ __author__ = 'tomtiddler'
 import json, logging, inspect, functools
 
 
+# 存储分页信息
+class Page(object):
+
+    def __init__(self, item_count, page_index=1, page_size=10):
+        self.item_count = item_count  # 所有日志的总个数？
+        self.page_size = page_size  # 单页日志个数
+        self.page_count = item_count // page_size + (1 if item_count % page_size > 0 else 0)  # 总个数不为零时的页数
+        if (item_count == 0) or (page_index > self.page_count):
+            self.offset = 0
+            self.limit = 0
+            self.page_index = 1
+        else:
+            self.page_index = page_index  # 当前页数
+            self.offset = self.page_size * (page_index - 1)  # 之前所有页的日志个数
+            self.limit = self.page_size  # 限制单页个数？
+        self.has_next = self.page_index < self.page_count
+        self.has_previous = self.page_index > 1
+
+    def __str__(self):
+        return 'item_count: %s, page_count: %s, page_index: %s, page_size: %s, offset: %s, limit: %s' % (
+            self.item_count, self.page_count, self.page_index, self.page_size, self.offset, self.limit
+        )
+
+    __repr__ = __str__
+
+
 class APIError(Exception):  # exception：例外，异常
     '''
     the base APIError which contains（包含，内容） error(required), data(optional) and message(optional)

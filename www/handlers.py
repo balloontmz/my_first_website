@@ -9,7 +9,7 @@ __author__ = 'tomtiddler'
 
 from www.coroweb import get, post
 from www.models import User, Blog, Comment, next_id
-from www.apis import APIError, APIPermissionError, APIResourceNotFoundError, APIValueError
+from www.apis import APIError, APIPermissionError, APIResourceNotFoundError, APIValueError, Page
 from www.config import configs
 import time, re, hashlib, json, logging, asyncio
 from aiohttp import web
@@ -57,6 +57,29 @@ async def cookie2user(cookie_str):
         return None
 
 
+def check_admin(request):  # 查看是否是管理员。manage 选项
+    if request.__user__ is None or not request.__user__.admin:
+        raise APIPermissionError()
+
+
+# 将字符串页码转换为整数
+def get_page_index(page_str):
+    p = 1
+    try:
+        p = int(page_str)
+    except ValueError as e:
+        pass
+    if p < 1:
+        p = 1
+    return p
+
+
+def text2html(text):  # 对多文本的处理，尚未完全明白
+    lines = map(lambda s: '<p>%s</p>' % s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;'),
+                filter(lambda s: s.strip() != '', text.split('\n')))  # filter:过滤器
+    return ''.join(lines)
+
+
 @get('/')
 def index(request):
     summary = 'Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.'
@@ -68,7 +91,7 @@ def index(request):
     return {
         '__template__': 'blogs.html',
         'blogs': blogs,
-        '__user__': request.__user__  # 解决无法显示已登录用户的问题
+        # '__user__': request.__user__  # 解决无法显示已登录用户的问题 ,在 response_factory 中统一加入了，在那能处理所有登录用户问题
     }
 
 
@@ -93,6 +116,30 @@ def signout(request):
     r.set_cookie(COOKIE_NAME, '-deleted-', max_age=0, httponly=True)
     logging.info('user signed out.')
     return r
+
+
+# 日志读取页？？？
+@get('/blog/{id}')
+def get_blog(id):
+    pass
+
+
+# 日志管理页
+@get('/manage/blogs')
+def manage_blogs(*, page='1'):
+    return {
+        '__template__': 'manage_blogs.html',
+        'page_index': get_page_index(page)
+    }
+
+
+@get('/manage/blogs/create')  # update users admin=1 where name='tomtiddler' 创建超级用户
+def manage_create_blog():
+    return {
+        '__template__': 'manage_blog_edit.html',
+        'id': '',
+        'action': '/api/blogs'
+    }
 
 
 '''
@@ -160,3 +207,37 @@ async def authenticate(*, email, passwd):
     r.content_type = 'application/json'
     r.body = json.dumps(user, ensure_ascii=False).encode('utf-8')  # 关于json的序列化操作
     return r
+
+
+# 用于获取某个具体的blog？
+@get('/api/blogs/{id}')
+async def api_get_blog(*, id):
+    blog = await Blog.find(id)
+    return blog
+
+
+@get('/api/blogs')  # 获取具体某页的全部blogs
+async def api_blogs(*, page='1'):
+    page_index = get_page_index(page)
+    num = await Blog.findNumber('count(id)')
+    p = Page(num, page_index)  # p是一个page对象
+    if num == 0:
+        return dict(page=p, blogs=())
+    blogs = await Blog.findAll(orderBy='created_at desc', limit=(p.offset, p.limit))
+    return dict(page=p, blogs=blogs)
+
+
+# 用于创建一个 blog ， 来自网页/manage/blogs/create
+@post('/api/blogs')
+async def api_create_blog(request, *, name, summary, content):
+    check_admin(request)  # 判断是否为管理员
+    if not name or not name.strip():
+        raise APIValueError('name', 'name cannot be empty.')
+    if not summary or not summary.strip():
+        raise APIValueError('summary', 'summary cannot be empty.')
+    if not content or not content.strip():
+        raise APIValueError('content', 'content cannot be empty.')
+    blog = Blog(user_id=request.__user__.id, user_name=request.__user__.name, user_image=request.__user__.image,
+                name=name.strip(), summary=summary.strip(), content=content.strip())
+    await blog.save()
+    return blog

@@ -1,5 +1,5 @@
 <!-- 日志创建和修改共用此模板 -->
-{% extend '__base__.html' %}
+{% extends '__base__.html' %}
 
 {% block title %}编辑日志{% endblock %}
 
@@ -22,6 +22,7 @@ var
                             $form.showFormError(err);
                         }
                         else {
+                            <!-- 日志创建成功的返回页, 测试时先返回api方便调试，实际是否应该返回blog界面？ -->
                             return location.assign('/api/blogs/' + r.id);
                         }
                     });
@@ -30,6 +31,7 @@ var
         });
         $('#vm').show();
     }
+    <!-- 此函数提供vm的初始值, 使得vm拥有创建和修改的功能 -->
     $(function () {
         if (ID) {
             getJSON('/api/blogs/' + ID, function (err, blog) {
@@ -79,6 +81,12 @@ var
             <label class="uk-form-label">标题：</label>
             <div class="uk-form-controls">
                 <textarea v-model="name" name="name" type="text" placeholder="标题" class="uk-width-1-1" style="resize:none;"></textarea>
+            </div>
+        </div>
+                <div class="uk-form-row">
+            <label class="uk-form-label">摘要：</label>
+            <div class="uk-form-controls">
+                <textarea v-model="summary" rows="4" name="content" placeholder="摘要" class="uk-width-1-1" style="resize:none;"></textarea>
             </div>
         </div>
         <div class="uk-form-row">

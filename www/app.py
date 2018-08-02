@@ -3,8 +3,9 @@
 
 """
  __main__ app.py
-第一次调试成功，切忌关闭chorme的本地代理sock5插件
+第一次调试成功，切记关闭chorme的本地代理sock5插件
 头文件载入在服务器中应取消www，或者用import sys方式改变运行时环境变量，可查。
+ctrl+shift+f 可查找代码
 """
 
 __author__ = 'tomtiddler'
@@ -112,14 +113,15 @@ async def response_factory(app, handler):  # 猜测：两层函数，第一次�
                 resp.content_type = 'application/json;charset=utf-8'
                 return resp
             else:
+                r['__user__'] = request.__user__  # 好想来个语法高亮显示此时的心情。应该想到的。判断是否为登录用户。在这统一加入
                 resp = web.Response(body=app['__templating__'].get_template(template).render(**r).encode('utf-8'))
                 resp.content_type = 'text/html;charset=utf-8'
                 return resp
-        if isinstance(r, int) and r >= 100 and r < 600:
+        if isinstance(r, int) and (r in range(100, 600)):
             return web.Response(r)
         if isinstance(r, tuple) and len(r) == 2:
             t, m = r
-            if isinstance(t, int) and t >= 100 and t < 600:
+            if isinstance(t, int) and (t in range(100, 600)):
                 return web.Response(t, str(m))
         # default
         resp = web.Response(body=str(r).encode('utf-8'))
@@ -146,7 +148,8 @@ def datetime_filter(t):
 
 async def init(loop):
     await orm.create_pool(loop=loop, **configs.db)
-    app = web.Application(loop=loop, middlewares=[logger_factory,auth_factory, response_factory])  # middlerwares:中间件，factory：工厂函数
+    app = web.Application(loop=loop,
+                          middlewares=[logger_factory, auth_factory, response_factory])  # middlerwares:中间件，factory：工厂函数
     init_jinja2(app, filters=dict(datetime=datetime_filter))  # 模板的传入参数
     add_routes(app, 'handlers')
     add_static(app)  # 和init_jinja2 两个函数都是需要访问文件夹的。注意路径
