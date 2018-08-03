@@ -1,67 +1,89 @@
-<!DOCTYPE html>
-<html class="uk-height-1-1">
-<head>
-    <meta charset="utf-8" />
-    <title>登录 - Awesome Python Webapp</title>
-    <link rel="stylesheet" href="/static/css/uikit.min.css">
-    <link rel="stylesheet" href="/static/css/uikit.gradient.min.css">
-    <script src="/static/js/jquery.min.js"></script>
-    <script src="/static/js/sha1.min.js"></script>
-    <script src="/static/js/uikit.min.js"></script>
-    <script src="/static/js/vue.min.js"></script>
-    <script src="/static/js/awesome.js"></script>
-    <script>
-$(function() {
-    var vmAuth = new Vue({
-        el: '#vm',
-        data: {
-            email: '',
-            passwd: ''
-        },
-        methods: {
-            submit: function(event) {
-                event.preventDefault();
-                var
-                    $form = $('#vm'),
-                    email = this.email.trim().toLowerCase(),
-                    data = {
-                        email: email,
-                        passwd: this.passwd==='' ? '' : CryptoJS.SHA1(email + ':' + this.passwd).toString()
-                    };
-                $form.postJSON('/api/authenticate', data, function(err, result) {
-                    if (! err) {
-                        location.assign('/');
-                    }
-                });
+{% extends '__base__.html' %}
+
+{% block title %}日志{% endblock %}
+
+{% block beforehead %}
+
+<script>
+    var comment_url = '/api/blogs/{{ blog.id }}/comments';
+
+    $(function () {
+        var $form = $('#form-comment');
+        $form.submit(function (e) {
+            e.preventDefault();
+            $form.showFormError('');
+            var content = $form.find('textarea').val().trim();
+            if (content == '') {
+                return $form.showFormError('请输入评论内容！ ');
             }
-        }
+            $form.postJSON(comment_url, {content: content}, function (err, result) {
+                if (err) {
+                    return $form.showFormError(err);
+                }
+                refresh();
+            });
+        });
     });
-});
-    </script>
-</head>
-<body class="uk-height-1-1">
-    <div class="uk-vertical-align uk-text-center uk-height-1-1">
-        <div class="uk-vertical-align-middle" style="width: 320px">
-            <p><a href="/" class="uk-icon-button"><i class="uk-icon-html5"></i></a> <a href="/">Awesome Python Webapp</a></p>
-            <form id="vm" v-on="submit: submit" class="uk-panel uk-panel-box uk-form">
+</script>
+
+{% endblock %}
+
+{% block content %}
+<!-- 记得闭合 -->
+
+<div class="uk-width-1-4">
+    <div class="uk-panel uk-panel-header">
+        <h3 class="uk-panel-title">友情连接</h3>
+        <ul class="uk-list uk-list-line">
+            <li><i class="uk-icon-thumbs-o-up"></i><a target="_blank" href="#">编程</a></li>
+            <li><i class="uk-icon-thumbs-o-up"></i><a target="_blank" href="#">读书</a></li>
+            <li><i class="uk-icon-thumbs-o-up"></i><a target="_blank" href="#">Python教程</a></li>
+            <li><i class="uk-icon-thumbs-o-up"></i><a target="_blank" href="#">Git教程</a></li>
+        </ul>
+    </div>
+</div>
+
+<div class="uk-width-medium-3-4">
+    <article class="uk-article">
+        <h2><a href="/blog/{{ blog.id }}">{{ blog.name }}</a></h2>
+        <p class="uk-article-meta">发表于{{ blog.created_at|datetime }}</p>
+        <p>{{ blog.html_content|safe }}</p>
+    </article>
+
+    <hr class="uk-article-divider">
+
+    {% if __user__ %}
+    <h3>发表评论</h3>
+
+    <article class="uk-comment">
+        <header class="uk-comment-header">
+            <img class="uk-comment-avatar uk-border-circle" width="50" height="50" src="{{__user__.image}}">
+            <h4 class="uk-comment-title">{{ __user__.name }}</h4>
+        </header>
+        <div class="uk-comment-body">
+            <form id="form-comment" class="uk-form">
                 <div class="uk-alert uk-alert-danger uk-hidden"></div>
                 <div class="uk-form-row">
-                    <div class="uk-form-icon uk-width-1-1">
-                        <i class="uk-icon-envelope-o"></i>
-                        <input v-model="email" name="email" type="text" placeholder="电子邮件" maxlength="50" class="uk-width-1-1 uk-form-large">
-                    </div>
+                    <textarea rows="6" placeholder="说点什么吧" style="width:100%;resize:none;"></textarea>
                 </div>
                 <div class="uk-form-row">
-                    <div class="uk-form-icon uk-width-1-1">
-                        <i class="uk-icon-lock"></i>
-                        <input v-model="passwd" name="passwd" type="password" placeholder="口令" maxlength="50" class="uk-width-1-1 uk-form-large">
-                    </div>
-                </div>
-                <div class="uk-form-row">
-                    <button type="submit" class="uk-width-1-1 uk-button uk-button-primary uk-button-large"><i class="uk-icon-sign-in"></i> 登录</button>
+                    <button type="submit" class="uk-button uk-button-primary"><i class="uk-icon-comment"></i> 发表评论</button>
                 </div>
             </form>
         </div>
-    </div>
-</body>
-</html>
+    </article>
+
+    <hr class="uk-article-divider">
+    {% endif %}
+
+    <h3>最新评论</h3>
+
+    <ul class="uk-comment-list">
+        {% for comment in comments %}
+        {% else %}
+        <p>还没有人评论</p>
+        {% endfor %}
+    </ul>
+
+</div>
+{% endblock %}

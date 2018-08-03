@@ -24,5 +24,7 @@
         <p><a href="/blog/{{ blog.id }}">继续阅读<i class="uk-icon-angle-double-right"></i></a></p>
     </article>
     {% endfor %}
+    <!-- 来自__base__定义的方法，为博客分页 -->
+    {{ pagination('/?page=', page) }}
 </div>
 {% endblock %}

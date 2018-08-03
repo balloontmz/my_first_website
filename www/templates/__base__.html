@@ -1,4 +1,21 @@
 <!DOCTYPE html>
+
+{% macro pagination(url, page) %}
+    <ul class="uk-pagination">
+        {% if page.has_previous %}
+            <li><a href="{{ url }}{{ page.page_index - 1 }}"><i class="uk-icon-angle-double-left"></i></a></li>
+        {% else %}
+            <li class="uk-disabled"><span><i class="uk-icon-angle-double-left"></i></span></li>
+        {% endif %}
+            <li class="uk-active"><span>{{ page.page_index }}</span></li>
+        {% if page.has_next %}
+            <li><a href="{{ url }}{{ page.page_index + 1 }}"><i class="uk-icon-angle-double-right"></i></a></li>
+        {% else %}
+            <li class="uk-disabled"><span><i class="uk-icon-angle-double-right"></i></span></li>
+        {% endif %}
+    </ul>
+{% endmacro %}
+
 <head>
     <meta charset="UTF-8">
     {% block meta %}<!-- block meta 页面元信息 -->{% endblock %}
@@ -59,7 +76,7 @@
                 <p>
                     <a target="_blank" href="#" class="uk-icon-button uk-icon-weibo"></a>
                     <a target="_blank" href="#" class="uk-icon-button uk-icon-github"></a>
-                    <a target="_blank" href="#" class="uk-icon-button uk-icon-linkedin-square"></a>
+                    <a target="_blank" href="#" class="uk-icon-button uk-icon-flask"></a>
                     <a target="_blank" href="#" class="uk-icon-button uk-icon-twitter"></a>
                 </p>
                 <p>Powered by<a href="#">Tomtiddler's Python Webapp</a>. Copyright &copy; 2018.
