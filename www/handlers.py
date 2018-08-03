@@ -143,7 +143,7 @@ def manage():
 
 # 用户管理页
 @get('/manage/users')
-def manage_comments(*, page='1'):
+def manage_users(*, page='1'):
     return {
         '__template__': 'manage_users.html',
         'page_index': get_page_index(page)
@@ -199,6 +199,17 @@ async def api_get_users():
 # 正则表达式，由于浏览器端已经把email地址小写化了，所以不需要匹配大写
 _RE_EMAIL = re.compile(r'^[a-z0-9\.\-\_]+\@[a-z0-9\-\_]+(\.[a-z0-9\-\_]+){1,4}$')
 _RE_SHA1 = re.compile(r'^[0-9a-f]{40}$')  # 16进制字符串？
+
+
+@get('/api/users')  # 获取具体某页的全部blogs  用于 manage_blogs 的数据获取 model, 传入参数page，由 manage_blogs 给予
+async def api_users(*, page='1'):
+    page_index = get_page_index(page)
+    num = await User.findNumber('count(id)')
+    p = Page(num, page_index)  # p是一个page对象
+    if num == 0:
+        return dict(page=p, users=())
+    users = await User.findAll(orderBy='created_at desc', limit=(p.offset, p.limit))
+    return dict(page=p, users=users)
 
 
 @post('/api/users')  # 用于注册
