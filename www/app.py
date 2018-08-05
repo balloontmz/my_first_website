@@ -67,6 +67,9 @@ async def auth_factory(app, handler):
         if cookie_str:
             user = await cookie2user(cookie_str)
             request.__user__ = user
+        # 进入管理界面前验证是否为管理员身份   应该想到的  差点想到的
+        if request.path.startswith('/manage/') and (request.__user__ is None or not request.__user__.admin):
+            return web.HTTPFound('/signin')
         return await handler(request)
 
     return auth

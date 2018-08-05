@@ -317,7 +317,7 @@ async def api_create_blog(request, *, name, summary, content):
 
 
 @post('/api/blogs/{id}/delete')  # 删除指定日志，在日志列表页的 api
-async def api_blog(request, *, id):
+async def api_delete_blog(request, *, id):  # 此处函数名出错了一次
     check_admin(request)
     blog = await Blog.find(id)
     await blog.remove()
