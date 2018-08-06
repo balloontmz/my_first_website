@@ -75,7 +75,7 @@ async def auth_factory(app, handler):
     return auth
 
 
-# 此函数用于何处？ 应该是解析关于 request的前置处理函数
+# 此函数用于何处？ 应该是解析关于 request的前置处理函数,处理返回函数的格式
 async def data_factory(app, handler):
     async def parse_data(request):
         if request.method == 'POST':
@@ -137,14 +137,15 @@ async def response_factory(app, handler):  # 猜测：两层函数，第一次�
 # 一个插件，用于在模板中插入函数处理后格式化的时间
 def datetime_filter(t):
     delta = int(time.time() - t)
+    print(delta)
     if delta < 60:
         return u'1分钟前'
     if delta < 3600:
         return u'%s分钟前' % (delta // 60)
     if delta < 86400:
-        return u'%s分钟前' % (delta // 3600)
+        return u'%s小时前' % (delta // 3600)
     if delta < 604800:
-        return u'%s分钟前' % (delta // 86400)
+        return u'%s天前' % (delta // 86400)
     dt = datetime.fromtimestamp(t)
     return u'%s年%s月%s日' % (dt.year, dt.month, dt.day)
 
