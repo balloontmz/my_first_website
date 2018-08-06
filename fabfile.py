@@ -1,26 +1,28 @@
+# -*- coding: utf-8 -*-
 # fabfile.py
 import os, re
 from datetime import datetime
 
 # 导入Fabric API:
-from invoke import *
-from fabric import *
+from fabric.api import *
 
 # 服务器登录用户名:
-env.user = 'michael'
+env.user = 'root'
 # sudo用户为root:
 env.sudo_user = 'root'
 # 服务器地址，可以有多个，依次部署:
-env.hosts = ['127.0.0.1']
+env.password = '~ls950322'
+env.hosts = ['120.79.157.29']
 
 # 服务器MySQL用户名和口令:
 db_user = 'www-data'
 db_password = 'www-data'
 
-_TAR_FILE = 'dist-awesome.tar.gz'
+# /usr/local/bin/fab build 执行命令
+_TAR_FILE = 'dist-website.tar.gz'
 
 def build():
-    includes = ['static', 'templates', 'transwarp', 'favicon.ico', '*.py']
+    includes = ['static', 'templates', 'favicon.ico', '*.py']
     excludes = ['test', '.*', '*.pyc', '*.pyo']
     local('rm -f dist/%s' % _TAR_FILE)
     with lcd(os.path.join(os.path.abspath('.'), 'www')):
@@ -30,7 +32,7 @@ def build():
         local(' '.join(cmd))
 
 _REMOTE_TMP_TAR = '/tmp/%s' % _TAR_FILE
-_REMOTE_BASE_DIR = '/srv/awesome'
+_REMOTE_BASE_DIR = '/srv/myfirst_website'
 
 def deploy():
     newdir = 'www-%s' % datetime.now().strftime('%y-%m-%d_%H.%M.%S')
@@ -48,10 +50,10 @@ def deploy():
     with cd(_REMOTE_BASE_DIR):
         sudo('rm -f www')
         sudo('ln -s %s www' % newdir)
-        sudo('chown www-data:www-data www')
-        sudo('chown -R www-data:www-data %s' % newdir)
+        #  sudo('chown www-data:www-data www')
+        #  sudo('chown -R www-data:www-data %s' % newdir)
     # 重启Python服务和nginx服务器:
     with settings(warn_only=True):
-        sudo('supervisorctl stop awesome')
-        sudo('supervisorctl start awesome')
-        sudo('/etc/init.d/nginx reload')
+        sudo('supervisorctl stop blogapp')
+        sudo('supervisorctl start blogapp')
+        #  sudo('/etc/init.d/nginx reload')

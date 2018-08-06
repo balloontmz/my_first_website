@@ -20,10 +20,10 @@ from datetime import datetime
 from aiohttp import web
 from jinja2 import Environment, FileSystemLoader
 
-from www import orm
-from www.coroweb import add_routes, add_static
-from www.config import configs
-from www.handlers import cookie2user, COOKIE_NAME
+import orm
+from coroweb import add_routes, add_static
+from config import configs
+from handlers import cookie2user, COOKIE_NAME
 
 
 def init_jinja2(app, **kw):  # options：设置

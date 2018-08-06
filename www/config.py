@@ -7,7 +7,7 @@
 
 __author__ = 'tomtiddler'
 
-from www import config_default
+import config_default
 
 
 class Dict(dict):
@@ -52,7 +52,7 @@ def merge(defaults, override):
 
 configs = config_default.configs
 try:
-    from www import config_override
+    import config_override
     configs = merge(configs, config_override.configs)
 except ImportError:
     raise

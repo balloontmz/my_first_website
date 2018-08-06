@@ -7,10 +7,10 @@ handlers
 
 __author__ = 'tomtiddler'
 
-from www.coroweb import get, post
-from www.models import User, Blog, Comment, next_id
-from www.apis import APIError, APIPermissionError, APIResourceNotFoundError, APIValueError, Page
-from www.config import configs
+from coroweb import get, post
+from models import User, Blog, Comment, next_id
+from apis import APIError, APIPermissionError, APIResourceNotFoundError, APIValueError, Page
+from config import configs
 import time, re, hashlib, json, logging, asyncio
 from aiohttp import web
 import markdown2
